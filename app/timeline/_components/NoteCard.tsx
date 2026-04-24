@@ -2,48 +2,47 @@
 
 import { format } from 'date-fns'
 import { ko } from 'date-fns/locale'
+import { MapPin, Clock } from 'lucide-react'
 import type { Event } from '@/hooks/useEvents'
 import { EVENT } from '@/lib/constants/event'
 
 interface NoteCardProps {
-  date: Date
-  events: Event[]
+  event: Event
 }
 
-export default function NoteCard({ date, events }: NoteCardProps) {
-  const dateLabel = format(date, 'M월 d일 EEEE', { locale: ko })
-  const isToday = new Date().toDateString() === date.toDateString()
+export default function NoteCard({ event }: NoteCardProps) {
+  const timeLabel = event.isAllDay ? '종일' : format(new Date(event.startAt), 'a h:mm', { locale: ko })
+  const endLabel = event.endAt && !event.isAllDay ? format(new Date(event.endAt), '~ a h:mm', { locale: ko }) : null
+  const isCancelled = event.status === 'cancelled'
+  const color = event.color || EVENT.DEFAULT_COLOR
 
   return (
-    <div className="bg-background-surface rounded-2xl border border-border-subtle shadow-sm p-4 space-y-3">
-      <div className="flex items-center gap-2">
-        <span className={['text-sm font-bold', isToday ? 'text-brand-primary' : 'text-text-primary'].join(' ')}>
-          {dateLabel}
+    <div className={['bg-background-surface rounded-2xl border border-border-subtle shadow-sm overflow-hidden', isCancelled ? 'opacity-50' : ''].join(' ')}>
+      <div className="h-1 w-full" style={{ backgroundColor: color }} />
+      <div className="p-4 space-y-2">
+        <span className={['text-base font-semibold text-text-primary leading-snug', isCancelled ? 'line-through' : ''].join(' ')}>
+          {event.title}
         </span>
-        {isToday && (
-          <span className="text-xs font-medium text-brand-primary bg-brand-subtle px-1.5 py-0.5 rounded-full">
-            오늘
-          </span>
+
+        <div className="flex flex-wrap gap-x-3 gap-y-1">
+          <div className="flex items-center gap-1 text-xs text-text-secondary">
+            <Clock size={12} className="shrink-0" />
+            <span>{timeLabel}{endLabel ? ` ${endLabel}` : ''}</span>
+          </div>
+          {event.location && (
+            <div className="flex items-center gap-1 text-xs text-text-secondary">
+              <MapPin size={12} className="shrink-0" />
+              <span className="truncate max-w-[160px]">{event.location}</span>
+            </div>
+          )}
+        </div>
+
+        {event.description && (
+          <p className="text-xs text-text-disabled line-clamp-2 leading-relaxed">
+            {event.description}
+          </p>
         )}
       </div>
-
-      <ul className="space-y-1.5">
-        {events.map((e) => {
-          const timeLabel = e.isAllDay ? '종일' : format(new Date(e.startAt), 'HH:mm')
-          return (
-            <li key={e.id} className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: e.color || EVENT.DEFAULT_COLOR }} />
-              <span className="text-xs text-text-disabled w-8 shrink-0">{timeLabel}</span>
-              <span className={['text-sm text-text-primary truncate', e.status === 'cancelled' ? 'line-through opacity-50' : ''].join(' ')}>
-                {e.title}
-              </span>
-              {e.location && (
-                <span className="text-xs text-text-disabled truncate hidden sm:block">· {e.location}</span>
-              )}
-            </li>
-          )
-        })}
-      </ul>
     </div>
   )
 }

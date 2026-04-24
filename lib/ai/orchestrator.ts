@@ -10,7 +10,7 @@ import type {
   SingleAIResponse,
 } from './types'
 
-const MODEL = 'gpt-4.1-mini'
+const MODEL = 'gpt-5.4-mini'
 const MAX_ITERATIONS = 6  // safety cap to prevent runaway loops
 
 type EventSummary = {

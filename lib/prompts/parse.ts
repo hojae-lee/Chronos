@@ -5,7 +5,7 @@ export function buildParsePrompt(text: string, referenceDate?: string): string {
 
 Today's date: ${today}
 
-Input: "${text}"
+<user_input>${text}</user_input>
 
 Respond with a JSON object (no markdown) with these fields:
 - title: string (event title in Korean)

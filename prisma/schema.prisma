@@ -1,0 +1,68 @@
+datasource db {
+  provider = "sqlite"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// === 도메인 모델 ===
+
+model User {
+  id             Int             @id @default(autoincrement())
+  name           String?
+  email          String?         @unique
+  createdAt      DateTime        @default(now())
+  events         Event[]
+  retrospectives Retrospective[]
+}
+
+model Event {
+  id          Int          @id @default(autoincrement())
+  userId      Int
+  title       String
+  description String?
+  startAt     DateTime
+  endAt       DateTime?
+  isAllDay    Boolean      @default(false)
+  location    String?
+  color       String       @default("#2ECC8F")
+  status      String       @default("active")
+  shareToken  String?      @unique
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  photos      EventPhoto[]
+
+  @@index([userId, startAt])
+  @@index([shareToken])
+}
+
+model EventPhoto {
+  id        Int      @id @default(autoincrement())
+  eventId   Int
+  filePath  String
+  caption   String?
+  createdAt DateTime @default(now())
+
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+}
+
+
+model Retrospective {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  year      Int
+  month     Int
+  content   String
+  summary   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, year, month])
+}

@@ -1,13 +1,34 @@
 # Chronos
 
 자연어 한 문장으로 캘린더를 완전히 제어하는 AI 플래너.  
-대화형 인터페이스와 단일 오케스트레이터 에이전트 루프를 중심으로 설계되었다.
+대화형 채팅 인터페이스와 단일 오케스트레이터 에이전트 루프를 중심으로 설계되었다.
+
+---
+
+## 랜딩 페이지
+
+`/` 루트는 랜딩 페이지로 렌더된다. 세 개 섹션으로 구성된다.
+
+- **Hero** — Iridescence WebGL 배경(ogl), BlurText 헤드라인, RotatingText 서브헤드, AIChatDemo 자동 타이핑 루프 (motion/react)
+- **Features** — 자연어 입력 / 가볍고 빠른 캘린더 / AI 월간 회고록
+- **RetroSection** — 다크 배경 AI 회고록 프리뷰 (stats + 타임라인 카드)
+
+SSR/CSR 경계: `page.tsx`, `LandingNav`, `HeroSection`, `FeaturesSection`, `RetroSection`은 Server Component. 애니메이션 컴포넌트(`Iridescence`, `BlurText`, `RotatingText`, `ShinyText`, `AIChatDemo`, `ScrollFade`)만 `'use client'`.
+
+```
+components/
+  react-bits/       — Iridescence.tsx, BlurText.tsx, RotatingText.tsx, ShinyText.tsx
+  landing/          — LandingNav.tsx, HeroSection.tsx, AIChatDemo.tsx,
+                      FeaturesSection.tsx, RetroSection.tsx, ScrollFade.tsx
+```
 
 ---
 
 ## 대화형 캘린더 제어
 
-입력창에 하고 싶은 것을 그냥 말하면 된다. AI가 의도를 파악해 필요한 도구를 조합하여 실행한다.
+캘린더 화면 우하단의 Wand2 버튼을 누르면 채팅 카드가 열린다.  
+카드에 말을 걸면 AI가 의도를 파악해 필요한 도구를 조합하여 실행한다.  
+AI 응답은 채팅 버블로 표시되고, 캘린더는 제자리에서 갱신된다(이동 없음).
 
 ### 업무 지시 예시
 
@@ -16,7 +37,6 @@
 "담주 화요일 오후 2시 치과 예약 잡아줘"
 "오늘 저녁 7시 팀 회식 추가해줘"
 "다음 달 1일부터 3일까지 제주도 여행 잡아줘"
-"매주 월요일 오전 10시 스탠드업 만들어줘"
 "내일 오전 9시 병원 예약, 강남구 삼성동"
 ```
 
@@ -25,24 +45,19 @@
 "치과 예약 제목 스케일링으로 바꿔줘"
 "팀 스탠드업 30분 뒤로 밀어줘"
 "치과 찾아서 다음 주 같은 시간으로 옮겨줘"
-"오늘 회의 장소 강남역 2번 출구로 업데이트해줘"
-"제주도 여행 하루 더 늘려줘"
 ```
 
 #### 일정 삭제 / 취소
 ```
 "팀 스탠드업 삭제해줘"
 "치과 예약 취소해줘"
-"이번 주 금요일 일정 다 지워줘"
 ```
 
-#### 일정 검색 및 이동
+#### 일정 검색
 ```
 "치과 어딨어?"
-"다음 주 일정 보여줘"
-"5월로 이동해줘"
-"오늘로 돌아가줘"
 "팀 회식 언제야?"
+"다음 주 일정 보여줘"
 ```
 
 #### 멀티스텝 (자동 연결)
@@ -52,140 +67,68 @@
 "스탠드업 찾아서 삭제해줘"                   → find → delete 자동 연결
 ```
 
+#### AI 월간 회고록
+```
+"이번달 어땠어?"
+"이번달 일정 어떻게 보냈어?"
+"회고록 만들어줘"
+```
+→ 회고록 패널이 열리고 AI가 한 달 일정을 분석해 회고록을 생성한다.
+
 ---
 
 ## 단일 오케스트레이터 에이전트 루프
 
-모든 자연어 요청은 하나의 오케스트레이터(`lib/ai/orchestrator.ts`)가 처리한다.  
-별도의 라우팅 없이 단일 엔드포인트(`POST /api/ai/chat`)로 진입하며, 오케스트레이터가 루프를 돌며 필요한 도구를 스스로 결정한다.
+모든 자연어 요청은 `POST /api/ai/chat` 단일 엔드포인트로 진입한다.  
+회고록 인텐트는 오케스트레이터 호출 전에 패턴 매칭으로 먼저 분기된다.
 
-### 루프 동작 원리
-
-```
-사용자: "치과 찾아서 다음 주 같은 시간으로 옮겨줘"
-
-Iteration 1:  LLM → find_event("치과")
-              결과: { id: 12, title: "치과 예약", startAt: "2026-04-25T14:00" }
-              → messages에 결과 주입
-
-Iteration 2:  LLM → update_event(id: 12, startAt: "2026-05-02T14:00")
-              결과: { success: true }
-              → messages에 결과 주입
-
-Iteration 3:  LLM → 도구 호출 없음 (스스로 완료 판단)
-              → "치과 예약을 5월 2일 오후 2시로 옮겼어요!" 반환
-```
-
-**LLM이 매 이터레이션마다 "다음 도구가 필요한가"를 스스로 결정한다.**  
-도구 호출이 없는 응답이 오면 루프가 종료된다. 최대 6회 반복으로 무한루프를 방지한다.
-
-### 아키텍처 구조도
+### 라우팅 흐름
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                     사용자 자연어 입력                     │
-└───────────────────────────┬─────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────┐
-│               POST /api/ai/chat (단일 진입점)             │
-│  - 전체 이벤트 목록 + 오늘 날짜 컨텍스트 주입 (DB)          │
-│  - runOrchestrator(text, today, events) 호출             │
-└───────────────────────────┬─────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────┐
-│                  orchestrator.ts                         │
-│                                                         │
-│   messages = [system prompt + 컨텍스트, user input]      │
-│                                                         │
-│   ┌─────────────────────────────────────────────────┐  │
-│   │            Agentic Loop (최대 6회)               │  │
-│   │                                                  │  │
-│   │  ① LLM 호출 (GPT-5.4-mini, tools 전달)          │  │
-│   │         │                                        │  │
-│   │         ├─ tool_calls 없음 → 루프 종료           │  │
-│   │         │                                        │  │
-│   │         └─ tool_calls 있음                       │  │
-│   │                   │                              │  │
-│   │                   ▼                              │  │
-│   │  ② executeSingleToolCall(name, args)             │  │
-│   │     → response  (프론트용 구조화 결과)            │  │
-│   │     → rawResult (LLM 피드백용 compact JSON)      │  │
-│   │                   │                              │  │
-│   │                   ▼                              │  │
-│   │  ③ messages에 tool result 주입 → ①로 반복        │  │
-│   └─────────────────────────────────────────────────┘  │
-│                        │                                │
-│            steps 배열 누적 (실행된 도구 기록)             │
-└───────────────────────┬─────────────────────────────────┘
-                        │
-            ┌───────────┼───────────┐
-            ▼           ▼           ▼
-        steps=0      steps=1    steps≥2
-            │           │           │
-        clarify    SingleAI    Orchestrated
-       (인라인     Response    Response
-        안내)     (기존 흐름)  + buildSideEffects()
-                                    │
-                          ┌─────────┴──────────┐
-                          │    SideEffects       │
-                          │  - refresh           │
-                          │  - navigateTo        │
-                          │  - openEventId       │
-                          └─────────┬──────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────┐
-│               hooks/useCalendarAI.ts                     │
-│  - onRefresh()      캘린더 이벤트 재조회                  │
-│  - onNavigateTo()   해당 날짜/월로 이동                   │
-│  - onOpenEvent()    이벤트 상세 모달 열기                 │
-│  - onToast()        성공/실행취소 토스트                  │
-└─────────────────────────────────────────────────────────┘
+사용자 입력
+    │
+    ├─ 회고록 패턴 감지? ──→ { action: 'retrospective', year, month } 즉시 반환
+    │   (이번달 어땠어? 등)
+    │
+    └─ runOrchestrator(text, today, events)
+           │
+           └─ Agentic Loop (최대 6회)
+                  ① LLM 호출 (GPT-5.4-mini, tools 전달)
+                  ② tool_calls 없음 → 루프 종료
+                  ③ tool_calls 있음 → executeSingleToolCall → messages에 결과 주입 → ①
 ```
 
 ### Function Calling 도구 (5종)
 
 | 도구 | 동작 |
 |------|------|
-| `create_event` | 새 일정 DB 저장. title / startAt / endAt / isAllDay / location / description 수신 |
-| `update_event` | eventId 기반 일정 부분 수정. 변경할 필드만 전달 |
-| `delete_event` | eventId 기반 일정 영구 삭제. 삭제 전 스냅샷 보존 → 실행취소 가능 |
-| `find_event` | 키워드로 일정 검색. 부분 일치 허용 ("치과" → "치과 예약" 매칭) |
-| `navigate_to_date` | 캘린더를 특정 날짜/월로 이동. DB 조작 없음 |
-
-### 시스템 프롬프트 컨텍스트
-
-매 요청마다 오늘 날짜와 전체 등록 일정 목록(ID 포함)을 주입한다.  
-LLM은 ID를 직접 사용해 `update_event` / `delete_event`를 호출하므로 `find_event` 선행 호출이 불필요하다.
-
-```
-Today is 2026-04-27 (일요일)
-
-등록된 일정:
-- ID:12 "치과 예약" (2026-04-29T14:00)
-- ID:13 "팀 스탠드업" (2026-04-28T10:00)
-
-규칙:
-1. DELETE → delete_event 즉시 호출. find_event 선행 금지
-2. UPDATE → update_event 즉시 호출. find_event 선행 금지
-3. 위치/날짜 조회 → find_event
-4. 신규 생성 → create_event
-5. 날짜 이동 → navigate_to_date
-```
+| `create_event` | 새 일정 DB 저장 |
+| `update_event` | eventId 기반 일정 부분 수정 |
+| `delete_event` | eventId 기반 일정 삭제. 삭제 전 스냅샷 보존 → 실행취소 가능 |
+| `find_event` | 키워드로 일정 검색. 부분 일치 허용 |
+| `navigate_to_date` | 클라이언트 날짜 이동 응답 반환 (DB 조작 없음) |
 
 ### AI 모듈 구조
 
 ```
 lib/ai/
-  types.ts           — AIResponse discriminated union 타입 정의
-  tools.ts           — Function Calling 스키마 (5종)
+  types.ts           — AIResponse discriminated union (retrospective 포함)
+  tools.ts           — Function Calling 스키마
   actions.ts         — 도구별 DB 실행 로직
   function-caller.ts — 단일 도구 실행 + rawResult 생성
   orchestrator.ts    — 에이전트 루프 (핵심)
   index.ts           — 외부 export 진입점
 ```
+
+---
+
+## AI 월간 회고록
+
+타임라인 화면 또는 캘린더 채팅("이번달 어땠어?")에서 접근 가능하다.
+
+- `POST /api/ai/retrospective` — 해당 월 일정 분석 → 마크다운 회고문 + 카테고리 분석 JSON 생성
+- 결과: 친근한 말투의 마크다운 회고문, 카테고리별 비중(%), 하이라이트 목록
+- UI: 랜딩 RetroSection과 동일한 에디토리얼 스타일 (대형 타이포 + stats 그리드 + 컬러 하이라이트 카드)
 
 ---
 
@@ -196,7 +139,7 @@ lib/ai/
 - **일간 패널** — 날짜 탭 클릭 시 슬라이드업
 - **연/월 피커** — 헤더 타이틀 탭으로 빠른 이동
 - **일정 공유** — 읽기 전용 공개 링크 생성
-- **타임라인** — 월 단위 세로형 카드 뷰 + AI 월간 회고록 생성
+- **타임라인** — 월 단위 세로형 카드 뷰 + AI 월간 회고록
 
 ---
 
@@ -210,6 +153,8 @@ lib/ai/
 | AI | OpenAI GPT-5.4-mini (Function Calling + Agentic Loop) |
 | State | TanStack Query v5 |
 | Styling | Tailwind CSS v4 + Pretendard |
+| Animation | motion/react (Framer Motion v12), ogl (WebGL) |
+| Markdown | react-markdown |
 | Test | Vitest + Testing Library |
 | Package Manager | pnpm |
 

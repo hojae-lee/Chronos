@@ -10,6 +10,7 @@ export type SingleAIResponse =
   | { action: 'find_event';       events: Event[];     message: string }
   | { action: 'navigate_to_date'; date: string;        message: string }
   | { action: 'clarify';          message: string }
+  | { action: 'retrospective';    year: number; month: number; message: string }
 
 // ─────────────────────────────────────────────
 // Orchestrator → multi-step, multiple tools

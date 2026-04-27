@@ -7,6 +7,7 @@ import CalendarView from '@/components/calendar/CalendarView'
 import type { CalendarViewHandle } from '@/components/calendar/CalendarView'
 import NaturalLanguageInput from './_components/NaturalLanguageInput'
 import Toast from '@/components/ui/Toast'
+import RetrospectivePanel from '@/app/timeline/_components/RetrospectivePanel'
 
 interface ToastState {
   message: string
@@ -19,6 +20,7 @@ export default function CalendarPage() {
   const calendarRef = useRef<CalendarViewHandle>(null)
   const [toast, setToast] = useState<ToastState | null>(null)
   const [dayPanelOpen, setDayPanelOpen] = useState(false)
+  const [retroPanel, setRetroPanel] = useState<{ year: number; month: number } | null>(null)
 
   const showToast = useCallback(
     (message: string, type: ToastState['type'] = 'info', onUndo?: () => void) => {
@@ -38,11 +40,23 @@ export default function CalendarPage() {
         </div>
       </main>
 
-      {!dayPanelOpen && <NaturalLanguageInput
-        onNavigateTo={(date) => calendarRef.current?.navigateTo(date)}
-        onOpenEvent={(id) => calendarRef.current?.openEventDetail(id)}
-        onToast={showToast}
-      />}
+      {!dayPanelOpen && (
+        <NaturalLanguageInput
+          onNavigateTo={(date) => calendarRef.current?.navigateTo(date)}
+          onOpenEvent={(id) => calendarRef.current?.openEventDetail(id)}
+          onToast={showToast}
+          onOpenRetrospective={(year, month) => setRetroPanel({ year, month })}
+        />
+      )}
+
+      {retroPanel && (
+        <RetrospectivePanel
+          year={retroPanel.year}
+          month={retroPanel.month}
+          isOpen={!!retroPanel}
+          onClose={() => setRetroPanel(null)}
+        />
+      )}
 
       {toast && (
         <Toast

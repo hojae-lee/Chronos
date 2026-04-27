@@ -8,44 +8,48 @@ import type { Event } from '@/hooks/useEvents'
 import { API } from '@/lib/constants/api'
 import type { AIResponse } from '@/lib/ai'
 
-// Re-export for consumers that still import from this hook
 export type { AIResponse as AIActionResult }
 
 export interface CalendarAICallbacks {
   onNavigateTo: (date: Date) => void
   onOpenEvent: (id: number) => void
   onToast: (message: string, type?: 'success' | 'error' | 'undo' | 'info', onUndo?: () => void) => void
+  onOpenRetrospective?: (year: number, month: number) => void
+}
+
+export interface ChatResult {
+  message: string
+  events?: Event[]
+  isRetro?: boolean
+  retroYear?: number
+  retroMonth?: number
 }
 
 export function useCalendarAI({
   onNavigateTo,
   onOpenEvent,
   onToast,
+  onOpenRetrospective,
 }: CalendarAICallbacks) {
   const queryClient = useQueryClient()
   const [loading, setLoading] = useState(false)
-  const [resultMessage, setResultMessage] = useState<string | null>(null)
-  const [resultEvents, setResultEvents] = useState<Event[] | null>(null)
 
   const invalidateEvents = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: eventKeys.lists() })
   }, [queryClient])
 
   const handleResult = useCallback(
-    (result: AIResponse) => {
-      setResultMessage(result.message)
-
+    (result: AIResponse): ChatResult => {
       switch (result.action) {
         case 'create_event':
           invalidateEvents()
-          onNavigateTo(new Date(result.event.startAt))
           onToast(result.message, 'success')
-          break
+          return { message: result.message }
 
         case 'update_event':
           invalidateEvents()
           onToast(result.message, 'success')
-          break
+          return { message: result.message }
 
         case 'delete_event': {
           invalidateEvents()
@@ -65,46 +69,37 @@ export function useCalendarAI({
             })
             invalidateEvents()
           })
-          break
+          return { message: result.message }
         }
 
         case 'find_event':
-          if (result.events.length === 1) {
-            onNavigateTo(new Date(result.events[0].startAt))
-            onOpenEvent(result.events[0].id)
-          } else if (result.events.length > 1) {
-            setResultEvents(result.events)
-          }
-          break
+          return { message: result.message, events: result.events }
 
         case 'navigate_to_date':
-          onNavigateTo(new Date(result.date))
-          onToast(result.message, 'info')
-          break
+          return { message: result.message }
 
         case 'clarify':
-          // message shown inline in the input component
-          break
+          return { message: result.message }
+
+        case 'retrospective':
+          onOpenRetrospective?.(result.year, result.month)
+          return { message: result.message, isRetro: true, retroYear: result.year, retroMonth: result.month }
 
         case 'orchestrated': {
           const { sideEffects } = result
           if (sideEffects.refresh) invalidateEvents()
-          if (sideEffects.navigateTo) onNavigateTo(new Date(sideEffects.navigateTo))
-          if (sideEffects.openEventId) onOpenEvent(sideEffects.openEventId)
           onToast(result.message, 'success')
-          break
+          return { message: result.message }
         }
       }
     },
-    [invalidateEvents, onNavigateTo, onOpenEvent, onToast]
+    [invalidateEvents, onNavigateTo, onOpenEvent, onToast, onOpenRetrospective]
   )
 
   const send = useCallback(
-    async (text: string) => {
-      if (!text.trim()) return
+    async (text: string): Promise<ChatResult | null> => {
+      if (!text.trim()) return null
       setLoading(true)
-      setResultMessage(null)
-      setResultEvents(null)
 
       try {
         const res = await fetch(API.AI.CHAT, {
@@ -118,13 +113,14 @@ export function useCalendarAI({
 
         if (!res.ok) {
           onToast('오류가 발생했어요. 다시 시도해주세요.', 'error')
-          return
+          return null
         }
 
         const result: AIResponse = await res.json()
-        handleResult(result)
+        return handleResult(result)
       } catch {
         onToast('오류가 발생했어요. 다시 시도해주세요.', 'error')
+        return null
       } finally {
         setLoading(false)
       }
@@ -132,11 +128,5 @@ export function useCalendarAI({
     [handleResult, onToast]
   )
 
-  return {
-    send,
-    loading,
-    resultMessage,
-    resultEvents,
-    clearMessage: () => { setResultMessage(null); setResultEvents(null) },
-  }
+  return { send, loading }
 }

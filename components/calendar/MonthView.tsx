@@ -59,9 +59,10 @@ function getColInfo(e: Event, week: Date[]): ColInfo {
   }
 }
 
-/** How many grid rows CSS auto-placement will need for these events */
-function calcBannerRowCount(mdEvents: Event[], week: Date[]): number {
+/** 각 이벤트가 CSS grid에서 몇 번째 행에 배치되는지 계산 */
+function assignBannerRows(mdEvents: Event[], week: Date[]): Map<Event, number> {
   const rows: Array<{ start: number; end: number }[]> = []
+  const assignment = new Map<Event, number>()
   for (const e of mdEvents) {
     const { startCol, span } = getColInfo(e, week)
     const endCol = startCol + span - 1
@@ -72,8 +73,9 @@ function calcBannerRowCount(mdEvents: Event[], week: Date[]): number {
       ri++
     }
     rows[ri].push({ start: startCol, end: endCol })
+    assignment.set(e, ri)
   }
-  return rows.length
+  return assignment
 }
 
 export default function MonthView({
@@ -118,17 +120,28 @@ export default function MonthView({
           return s <= weekEnd && en >= weekStart
         })
 
-        const bannerRows = weekMD.length > 0 ? calcBannerRowCount(weekMD, week) : 0
-        const bannerReservedH = bannerRows * ROW_H  // px to reserve inside each cell
+        const bannerRowAssignment = weekMD.length > 0 ? assignBannerRows(weekMD, week) : new Map<Event, number>()
 
         return (
           <div key={wi} className="relative">
             {/* Day cells ------------------------------------------------- */}
             <div className="grid grid-cols-7">
-              {week.map(day => {
+              {week.map((day, dayIdx) => {
                 const inMonth = isSameMonth(day, currentDate)
                 const today = isToday(day)
                 const daySingles = singleDayEvents.filter(e => isSameDay(new Date(e.startAt), day))
+
+                // 이 날짜를 실제로 지나가는 배너들만 계산
+                const col = dayIdx + 1 // 1-based
+                const eventsOnDay = weekMD.filter(e => {
+                  const { startCol, span } = getColInfo(e, week)
+                  return col >= startCol && col <= startCol + span - 1
+                })
+                const maxRow = eventsOnDay.reduce(
+                  (max, e) => Math.max(max, bannerRowAssignment.get(e) ?? -1),
+                  -1
+                )
+                const cellBannerH = maxRow >= 0 ? (maxRow + 1) * ROW_H : 0
 
                 return (
                   <div
@@ -149,9 +162,9 @@ export default function MonthView({
                       {format(day, 'd')}
                     </span>
 
-                    {/* Reserved space for multi-day banners */}
-                    {bannerReservedH > 0 && (
-                      <div style={{ height: `${bannerReservedH}px` }} className="shrink-0" />
+                    {/* 이 날짜에 실제 배너가 있는 경우에만 공간 예약 */}
+                    {cellBannerH > 0 && (
+                      <div style={{ height: `${cellBannerH}px` }} className="shrink-0" />
                     )}
 
                     {/* Single-day events */}

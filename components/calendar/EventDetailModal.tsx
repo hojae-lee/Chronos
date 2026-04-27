@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Clock, MapPin, FileText, Pencil, XCircle, Trash2, Share2 } from 'lucide-react'
+import { Clock, MapPin, FileText, Pencil, XCircle, Trash2 } from 'lucide-react'
 import Modal from '@/components/ui/Modal'
 import Badge from '@/components/ui/Badge'
 import ShareButton from '@/components/share/ShareButton'

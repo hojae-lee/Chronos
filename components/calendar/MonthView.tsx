@@ -4,7 +4,6 @@ import {
   startOfMonth, endOfMonth, startOfWeek, endOfWeek,
   eachDayOfInterval, isSameMonth, isSameDay, isToday, format,
 } from 'date-fns'
-import { ko } from 'date-fns/locale'
 import type { Event } from '@/hooks/useEvents'
 import EventCard from './EventCard'
 import { EVENT } from '@/lib/constants/event'

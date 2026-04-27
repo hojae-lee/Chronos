@@ -9,6 +9,7 @@ import type {
   SideEffects,
   SingleAIResponse,
 } from './types'
+import { TOOL_NAME, ACTION } from './constants'
 
 const MODEL = 'gpt-5.4-mini'
 const MAX_ITERATIONS = 6  // safety cap to prevent runaway loops
@@ -90,8 +91,7 @@ export async function runOrchestrator(
   // ── Build final response ──────────────────────────────────────────────────
 
   if (steps.length === 0) {
-    // LLM chose not to call any tool → clarify
-    return { action: 'clarify', message: finalMessage }
+    return { action: ACTION.CLARIFY, message: finalMessage }
   }
 
   if (steps.length === 1) {
@@ -99,9 +99,8 @@ export async function runOrchestrator(
     return steps[0].response
   }
 
-  // Multi-step: return orchestrated response with aggregated side effects
   return {
-    action: 'orchestrated',
+    action: ACTION.ORCHESTRATED,
     message: finalMessage,
     steps: steps.map(({ tool, args, success }) => ({ tool, args, success })),
     sideEffects: buildSideEffects(steps),
@@ -112,36 +111,38 @@ export async function runOrchestrator(
 function buildSideEffects(
   steps: (OrchestratedStep & { response: SingleAIResponse })[]
 ): SideEffects {
-  const mutatingTools = new Set(['create_event', 'update_event', 'delete_event'])
+  const mutatingTools = new Set<string>([
+    TOOL_NAME.CREATE_EVENT,
+    TOOL_NAME.UPDATE_EVENT,
+    TOOL_NAME.DELETE_EVENT,
+  ])
 
   const refresh = steps.some(s => mutatingTools.has(s.tool))
 
-  // Navigate to the latest create/update event date, or an explicit navigate target
   const navigateStep = [...steps].reverse().find(s =>
-    s.tool === 'navigate_to_date' ||
-    s.tool === 'create_event' ||
-    s.tool === 'update_event'
+    s.tool === TOOL_NAME.NAVIGATE_TO_DATE ||
+    s.tool === TOOL_NAME.CREATE_EVENT ||
+    s.tool === TOOL_NAME.UPDATE_EVENT
   )
   let navigateTo: string | undefined
   if (navigateStep) {
-    if (navigateStep.response.action === 'navigate_to_date') {
+    if (navigateStep.response.action === ACTION.NAVIGATE_TO_DATE) {
       navigateTo = navigateStep.response.date
     } else if (
-      navigateStep.response.action === 'create_event' ||
-      navigateStep.response.action === 'update_event'
+      navigateStep.response.action === ACTION.CREATE_EVENT ||
+      navigateStep.response.action === ACTION.UPDATE_EVENT
     ) {
       navigateTo = navigateStep.response.event.startAt
     }
   }
 
-  // Open event detail if a find returned exactly one result (and nothing was mutated after)
-  const findStep = steps.find(s => s.tool === 'find_event')
+  const findStep = steps.find(s => s.tool === TOOL_NAME.FIND_EVENT)
   const hadMutationAfterFind = steps
     .slice(steps.indexOf(findStep!) + 1)
     .some(s => mutatingTools.has(s.tool))
 
   let openEventId: number | undefined
-  if (findStep && !hadMutationAfterFind && findStep.response.action === 'find_event') {
+  if (findStep && !hadMutationAfterFind && findStep.response.action === ACTION.FIND_EVENT) {
     if (findStep.response.events.length === 1) {
       openEventId = findStep.response.events[0].id
     }

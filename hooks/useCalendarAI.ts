@@ -7,6 +7,7 @@ import { eventKeys } from '@/hooks/queries/eventQueries'
 import type { Event } from '@/hooks/useEvents'
 import { API } from '@/lib/constants/api'
 import type { AIResponse } from '@/lib/ai'
+import { ACTION } from '@/lib/ai/constants'
 
 export type { AIResponse as AIActionResult }
 
@@ -41,17 +42,17 @@ export function useCalendarAI({
   const handleResult = useCallback(
     (result: AIResponse): ChatResult => {
       switch (result.action) {
-        case 'create_event':
+        case ACTION.CREATE_EVENT:
           invalidateEvents()
           onToast(result.message, 'success')
           return { message: result.message }
 
-        case 'update_event':
+        case ACTION.UPDATE_EVENT:
           invalidateEvents()
           onToast(result.message, 'success')
           return { message: result.message }
 
-        case 'delete_event': {
+        case ACTION.DELETE_EVENT: {
           invalidateEvents()
           const snapshot = result.deletedEvent
           onToast(result.message, 'undo', async () => {
@@ -72,20 +73,20 @@ export function useCalendarAI({
           return { message: result.message }
         }
 
-        case 'find_event':
+        case ACTION.FIND_EVENT:
           return { message: result.message, events: result.events }
 
-        case 'navigate_to_date':
+        case ACTION.NAVIGATE_TO_DATE:
           return { message: result.message }
 
-        case 'clarify':
+        case ACTION.CLARIFY:
           return { message: result.message }
 
-        case 'retrospective':
+        case ACTION.RETROSPECTIVE:
           onOpenRetrospective?.(result.year, result.month)
           return { message: result.message, isRetro: true, retroYear: result.year, retroMonth: result.month }
 
-        case 'orchestrated': {
+        case ACTION.ORCHESTRATED: {
           const { sideEffects } = result
           if (sideEffects.refresh) invalidateEvents()
           onToast(result.message, 'success')

@@ -1,4 +1,5 @@
 import type { ChatCompletionTool } from 'openai/resources'
+import { TOOL_NAME } from './constants'
 
 /**
  * OpenAI function calling schemas.
@@ -8,7 +9,7 @@ export const calendarTools: ChatCompletionTool[] = [
   {
     type: 'function',
     function: {
-      name: 'create_event',
+      name: TOOL_NAME.CREATE_EVENT,
       description: 'Create a new calendar event when user wants to add or schedule something',
       parameters: {
         type: 'object',
@@ -27,7 +28,7 @@ export const calendarTools: ChatCompletionTool[] = [
   {
     type: 'function',
     function: {
-      name: 'update_event',
+      name: TOOL_NAME.UPDATE_EVENT,
       description: 'Update an existing calendar event. Use event IDs from the provided event list.',
       parameters: {
         type: 'object',
@@ -47,7 +48,7 @@ export const calendarTools: ChatCompletionTool[] = [
   {
     type: 'function',
     function: {
-      name: 'delete_event',
+      name: TOOL_NAME.DELETE_EVENT,
       description: 'Permanently delete a calendar event. Use the event ID from the provided event list.',
       parameters: {
         type: 'object',
@@ -61,7 +62,7 @@ export const calendarTools: ChatCompletionTool[] = [
   {
     type: 'function',
     function: {
-      name: 'find_event',
+      name: TOOL_NAME.FIND_EVENT,
       description: 'Search for events by keyword. Use when user asks where/when an event is, or when you need the event ID before updating/deleting and the ID is not in the context.',
       parameters: {
         type: 'object',
@@ -75,7 +76,7 @@ export const calendarTools: ChatCompletionTool[] = [
   {
     type: 'function',
     function: {
-      name: 'navigate_to_date',
+      name: TOOL_NAME.NAVIGATE_TO_DATE,
       description: 'Navigate the calendar to a specific date or month',
       parameters: {
         type: 'object',

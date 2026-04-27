@@ -1,24 +1,27 @@
 import type { Event } from '@/hooks/useEvents'
+import type { ACTION } from './constants'
+
+type A = typeof ACTION
 
 // ─────────────────────────────────────────────
 // Single tool call → one action, one response
 // ─────────────────────────────────────────────
 export type SingleAIResponse =
-  | { action: 'create_event';     event: Event;        message: string }
-  | { action: 'update_event';     event: Event;        message: string }
-  | { action: 'delete_event';     eventId: number; deletedEvent: Event; message: string }
-  | { action: 'find_event';       events: Event[];     message: string }
-  | { action: 'navigate_to_date'; date: string;        message: string }
-  | { action: 'clarify';          message: string }
-  | { action: 'retrospective';    year: number; month: number; message: string }
+  | { action: A['CREATE_EVENT'];     event: Event;        message: string }
+  | { action: A['UPDATE_EVENT'];     event: Event;        message: string }
+  | { action: A['DELETE_EVENT'];     eventId: number; deletedEvent: Event; message: string }
+  | { action: A['FIND_EVENT'];       events: Event[];     message: string }
+  | { action: A['NAVIGATE_TO_DATE']; date: string;        message: string }
+  | { action: A['CLARIFY'];          message: string }
+  | { action: A['RETROSPECTIVE'];    year: number; month: number; message: string }
 
 // ─────────────────────────────────────────────
 // Orchestrator → multi-step, multiple tools
 // ─────────────────────────────────────────────
 export interface SideEffects {
-  refresh: boolean        // calendar should re-fetch events
-  navigateTo?: string     // ISO date string to navigate to
-  openEventId?: number    // event detail to open
+  refresh: boolean
+  navigateTo?: string
+  openEventId?: number
 }
 
 export interface OrchestratedStep {
@@ -28,7 +31,7 @@ export interface OrchestratedStep {
 }
 
 export type OrchestratedResponse = {
-  action: 'orchestrated'
+  action: A['ORCHESTRATED']
   message: string
   steps: OrchestratedStep[]
   sideEffects: SideEffects
@@ -40,6 +43,5 @@ export type AIResponse = SingleAIResponse | OrchestratedResponse
 // Internal: result of executing one tool call
 export interface ToolExecution {
   response: SingleAIResponse
-  // Compact summary fed back to the LLM so it can plan next steps
   rawResult: Record<string, unknown>
 }

@@ -93,11 +93,9 @@ export default function DayPanel({
             <ListContent
               events={dayEvents}
               onEventClick={onEventClick}
-              onAddEvent={onAddEvent}
             />
           ) : (
             <HourlyContent
-              date={date}
               events={dayEvents}
               onEventClick={onEventClick}
             />
@@ -124,11 +122,9 @@ export default function DayPanel({
 function ListContent({
   events,
   onEventClick,
-  onAddEvent,
 }: {
   events: Event[]
   onEventClick: (e: Event) => void
-  onAddEvent: () => void
 }) {
   if (events.length === 0) {
     return (
@@ -234,11 +230,9 @@ function layoutEvents(events: Event[]) {
 }
 
 function HourlyContent({
-  date,
   events,
   onEventClick,
 }: {
-  date: Date
   events: Event[]
   onEventClick: (e: Event) => void
 }) {

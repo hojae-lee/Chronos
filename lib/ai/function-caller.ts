@@ -4,8 +4,9 @@ import {
   execDeleteEvent,
   execFindEvent,
 } from './actions'
-import type { SingleAIResponse, ToolExecution } from './types'
+import type { ToolExecution } from './types'
 import type { Event } from '@/hooks/useEvents'
+import { TOOL_NAME, ACTION } from './constants'
 
 type PrismaEvent = Awaited<ReturnType<typeof execCreateEvent>>
 
@@ -47,30 +48,30 @@ export async function executeSingleToolCall(
   args: Record<string, unknown>
 ): Promise<ToolExecution> {
   switch (name) {
-    case 'create_event': {
+    case TOOL_NAME.CREATE_EVENT: {
       const raw = await execCreateEvent(args as Parameters<typeof execCreateEvent>[0])
       const event = toEvent(raw)
       return {
-        response: { action: 'create_event', event, message: `"${event.title}" 일정을 추가했어요!` },
+        response: { action: ACTION.CREATE_EVENT, event, message: `"${event.title}" 일정을 추가했어요!` },
         rawResult: { success: true, eventId: event.id, title: event.title, startAt: event.startAt },
       }
     }
 
-    case 'update_event': {
+    case TOOL_NAME.UPDATE_EVENT: {
       const raw = await execUpdateEvent(args as Parameters<typeof execUpdateEvent>[0])
       const event = toEvent(raw)
       return {
-        response: { action: 'update_event', event, message: `"${event.title}" 일정을 수정했어요!` },
+        response: { action: ACTION.UPDATE_EVENT, event, message: `"${event.title}" 일정을 수정했어요!` },
         rawResult: { success: true, eventId: event.id, title: event.title, startAt: event.startAt },
       }
     }
 
-    case 'delete_event': {
+    case TOOL_NAME.DELETE_EVENT: {
       const raw = await execDeleteEvent(args as Parameters<typeof execDeleteEvent>[0])
       const deleted = toEvent(raw)
       return {
         response: {
-          action: 'delete_event',
+          action: ACTION.DELETE_EVENT,
           eventId: (args as { eventId: number }).eventId,
           deletedEvent: deleted,
           message: `"${deleted.title}" 일정을 삭제했어요.`,
@@ -79,14 +80,14 @@ export async function executeSingleToolCall(
       }
     }
 
-    case 'find_event': {
+    case TOOL_NAME.FIND_EVENT: {
       const raws = await execFindEvent(args as Parameters<typeof execFindEvent>[0])
       const events = raws.map(toEvent)
       const message = events.length > 0
         ? `"${events[0].title}" 일정을 찾았어요!`
         : `"${(args as { query: string }).query}"과 관련된 일정을 찾지 못했어요.`
       return {
-        response: { action: 'find_event', events, message },
+        response: { action: ACTION.FIND_EVENT, events, message },
         // Include IDs so the LLM can use them in subsequent update/delete calls
         rawResult: {
           found: events.length,
@@ -95,10 +96,10 @@ export async function executeSingleToolCall(
       }
     }
 
-    case 'navigate_to_date': {
+    case TOOL_NAME.NAVIGATE_TO_DATE: {
       const date = (args as { date: string }).date
       return {
-        response: { action: 'navigate_to_date', date, message: `${date}로 이동할게요.` },
+        response: { action: ACTION.NAVIGATE_TO_DATE, date, message: `${date}로 이동할게요.` },
         rawResult: { success: true, date },
       }
     }

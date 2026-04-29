@@ -1,11 +1,9 @@
 import Link from "next/link";
-import Iridescence from "@/components/react-bits/Iridescence";
 import BlurText from "@/components/react-bits/BlurText";
 import RotatingText from "@/components/react-bits/RotatingText";
 import ShinyText from "@/components/react-bits/ShinyText";
-import AIChatDemo from "./AIChatDemo";
-
-const HERO_COLOR: [number, number, number] = [0.22, 0.88, 0.6];
+import CalendarDemo from "./CalendarDemo";
+import CalendarBackground from "./CalendarBackground";
 
 export default function HeroSection() {
   return (
@@ -17,12 +15,7 @@ export default function HeroSection() {
       }}
     >
       <div className="absolute inset-0 z-0">
-        <Iridescence
-          color={HERO_COLOR}
-          speed={0.45}
-          amplitude={0.1}
-          mouseReact
-        />
+        <CalendarBackground />
       </div>
 
       <div className="relative z-10 flex-1 flex items-center px-6 py-20">
@@ -68,7 +61,7 @@ export default function HeroSection() {
           </div>
 
           <div className="flex justify-center md:justify-end">
-            <AIChatDemo />
+            <CalendarDemo />
           </div>
         </div>
       </div>

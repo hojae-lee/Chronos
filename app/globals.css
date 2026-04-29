@@ -109,6 +109,15 @@ body {
   50%      { box-shadow: 0 0 0 3px rgba(46, 204, 143, 0.25); }
 }
 
+@keyframes cal-float {
+  0%   { transform: translateY(0)     translateX(0)    rotate(0deg);   opacity: 0; }
+  10%  { opacity: 1; }
+  45%  { transform: translateY(-42vh) translateX(12px) rotate(3deg); }
+  55%  { transform: translateY(-46vh) translateX(-8px) rotate(-2deg); }
+  90%  { opacity: 1; }
+  100% { transform: translateY(-95vh) translateX(4px)  rotate(1deg);  opacity: 0; }
+}
+
 /* ===== React Bits: RotatingText ===== */
 .text-rotate {
   display: flex;
